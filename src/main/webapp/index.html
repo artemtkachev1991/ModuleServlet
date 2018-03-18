@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ModuleBD</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://code.jquery.com/jquery-3.3.1.js"
+            integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60="
+            crossorigin="anonymous"></script>
+
+</head>
+<body onload="loadTables()">
+
+<style>
+    #header {
+        position: fixed;
+        height: 10%;
+        width: 100%;
+        background-color: antiquewhite;
+        top: 0%;
+        left: 0%;
+    }
+
+    #tableContent {
+        position: absolute;
+        top: 10%;
+        left: 0%;
+        width: 100%;
+        background-color: burlywood;
+    }
+    .cell {
+        width: 55px;
+    }
+</style>
+
+<div id="header">
+    Выбор таблицы: <select id="tableSelection" onchange="loadTable(this.selectedIndex)"></select>
+    <input type="button" id="newTable" value="Создать таблицу" onclick="createNewTable()">
+    <input type="button" id="newColomn" value="Добавить колокну" onclick="addColumn()">
+    <input type="button" id="newRow" value="Добавить запись" onclick="addRow()">
+    <input type="button" id="save" value="Сохранить" onclick="save()"><br>
+    <input type="text" id="renameInput" placeholder="Переименовать таблицу">
+    <input type="button" id="rename" value="Переименовать" onclick="rename()">
+</div>
+
+<div id="tableContent">
+    <h1>Выберите таблицу или создайте новую</h1>
+</div>
+
+<script>
+    var tableContainer = document.getElementById("tableContent");
+    var select = document.getElementById("tableSelection");
+    var cellArray;
+    var tableCount;
+
+    function rename() {
+        var renameField = document.getElementById("renameInput");
+        $.post("http://localhost:9090/ServletModule/Web", JSON.stringify(
+            {
+                type: "renameTable",
+                id: select.value,
+                name: renameField.value
+            }));
+
+        document.getElementById("opt"+select.selectedIndex).setAttribute("label", renameField.value);
+        console.log("renamed: "+select.selectedIndex);
+        renameField.value="";
+
+    }
+
+    function save() {
+
+        $.post("http://localhost:9090/ServletModule/Web", JSON.stringify(
+            {
+                type: "saveTable",
+                id: select.value,
+                data: cellArray
+            }),
+            function (data) {console.log("saved")})
+    }
+
+    function createNewTable() {
+        $.post("http://localhost:9090/ServletModule/Web", JSON.stringify(
+            {type: "createTable"}),
+            function (data) {
+                loadTables();
+                renderTable(data);
+            })
+    }
+
+    function addColumn() {
+        for(var i = 0; i< cellArray.length; i++) {
+            cellArray[i][cellArray[i].length] = "";
+        }
+        renderTable(cellArray);
+    }
+
+    function addRow() {
+        cellArray[cellArray.length] = new Array();
+        for (var i =0; i < cellArray[0].length;i++) {
+            cellArray[cellArray.length-1][i]="";
+        }
+        renderTable(cellArray);
+    }
+
+    function loadTables() {
+        $.get("http://localhost:9090/ServletModule/Web?type=needTables",
+            function (data) {
+                appendSelect(data);
+                console.log(data.length);
+                if(data.length>0) {
+                    loadTable(0);
+                }
+            })
+    }
+
+    function appendSelect(data) {
+        while (select.firstChild) {
+            select.removeChild(select.firstChild);
+        }
+        console.log(data)
+        for (var i = 0; i < data.length; i++) {
+            var newOption = document.createElement("option");
+            newOption.setAttribute("value", i);
+            newOption.setAttribute("id", "opt"+i);
+            newOption.setAttribute("label", data[i].name);
+            select.appendChild(newOption)
+        }
+    }
+
+    function renderTable (data){
+        console.log(data);
+        while (tableContainer.firstChild) {
+            tableContainer.removeChild(tableContainer.firstChild);
+        }
+        if (data.length > 0) {
+            cellArray = new Array();
+        }
+        for (var i = 0; i < data.length; i++) {
+            cellArray[i] = new Array();
+            for (var is = 0; is < data[i].length; is++) {
+                var newCell = document.createElement("input");
+                newCell.value = data[i][is];
+                newCell.className = "cell";
+                newCell.rowNum = i;
+                newCell.colNum = is;
+                newCell.setAttribute("onChange", "changeArray(this.value, this.rowNum, this.colNum)");
+                cellArray[i][is] = data[i][is];
+                tableContainer.appendChild(newCell);
+            }
+            var newRow = document.createElement("br");
+            tableContainer.appendChild(newRow);
+        }
+        console.log(cellArray);
+    }
+
+    function loadTable(id) {
+        $.get("http://localhost:9090/ServletModule/Web?type=needTable&id=" + id,
+            function (data) {
+                renderTable(data);
+            })
+    }
+
+    function changeArray(text, rowNum, colNum) {
+        cellArray[rowNum][colNum] = text;
+    }
+
+</script>
+
+</body>
+</html>
